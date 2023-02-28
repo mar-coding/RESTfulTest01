@@ -39,7 +39,8 @@ func handleRequests() {
 
 	// http.HandleFunc("/", indexPage)
 
-	log.Fatal(http.ListenAndServe(":12345", nil))
+	//log.Fatal(http.ListenAndServe(":12345", nil))
+	log.Fatal(http.ListenAndServeTLS(":443", "server.crt", "server.key", nil))
 }
 
 func main() {

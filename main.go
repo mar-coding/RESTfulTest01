@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+
+	"github.com/gorilla/mux"
 )
 
 var counter int
@@ -77,19 +79,25 @@ func incrementCounterPage(w http.ResponseWriter, r *http.Request) {
 
 func handleRequests() {
 
-	http.HandleFunc("/amin", aminPage)
-	http.HandleFunc("/inc", incrementCounterPage)
-	http.HandleFunc("/movie", getMovies)
-	http.Handle("/", http.FileServer(http.Dir("./static")))
+	// creates a new instance of a mux router
+	myRouter := mux.NewRouter().StrictSlash(true)
+
+	myRouter.HandleFunc("/amin", aminPage)
+	myRouter.HandleFunc("/inc", incrementCounterPage)
+	myRouter.HandleFunc("/movie", getMovies)
+	// http.Handle("/", http.FileServer(http.Dir("./static")))
+	myRouter.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
 
 	// http.HandleFunc("/", indexPage)
 
-	log.Fatal(http.ListenAndServe(":12345", nil))
+	log.Fatal(http.ListenAndServe(":12345", myRouter))
 
 	// for https running
 	// log.Fatal(http.ListenAndServeTLS(":443", "server.crt", "server.key", nil))
+
 }
 
 func main() {
+	fmt.Println("Rest API v2.0 - with Mux Routers")
 	handleRequests()
 }

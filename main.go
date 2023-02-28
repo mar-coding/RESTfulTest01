@@ -27,12 +27,17 @@ func incrementCounterPage(w http.ResponseWriter, r *http.Request) {
 	counter++
 	fmt.Fprintf(w, strconv.Itoa(counter))
 	mutex.Unlock()
+	fmt.Println("Endpoint Hit: incPage")
 }
 
 func handleRequests() {
-	http.HandleFunc("/", indexPage)
+
 	http.HandleFunc("/amin", aminPage)
 	http.HandleFunc("/inc", incrementCounterPage)
+
+	http.Handle("/", http.FileServer(http.Dir("./static")))
+
+	// http.HandleFunc("/", indexPage)
 
 	log.Fatal(http.ListenAndServe(":12345", nil))
 }

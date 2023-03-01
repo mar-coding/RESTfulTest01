@@ -18,4 +18,5 @@ main
 module/web-service-gin/main
 *.crt
 *.key
+*.env
 

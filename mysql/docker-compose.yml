@@ -10,6 +10,8 @@ services:
       MYSQL_DATABASE: ${DB_NAME:?error}
     ports:
       - "3308:3306"
+    expose:
+      - "3308"
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
     restart: always

@@ -52,6 +52,8 @@ var movies = []Movie{}
 
 //{"ID": "5", "Title": "TestTitle", "Year": "TestYear", "Genre": "Test, Test, Test", "Rate": 10}
 
+// ---------------- REST section ----------------
+
 // get all movies in json format
 func getMovies(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(movies)
@@ -149,6 +151,8 @@ func handleRequests() {
 	// log.Fatal(http.ListenAndServeTLS(":443", "server.crt", "server.key", nil))
 
 }
+
+// ---------------- DB section ----------------
 func load_db_env() {
 	err := godotenv.Load("local.env")
 	if err != nil {
@@ -246,6 +250,26 @@ func db_retrieve_by_id(id int) Movie {
 	}
 	return temp
 }
+func db_update(movie_id int, movie_name string, movie_year string, movie_genre string, movie_rate string) {
+	fmt.Println("** Update data based on ID **")
+	db := db_connect()
+	defer db.Close()
+	q, err := db.Prepare("UPDATE Movie SET movie_name=?, movie_year=?, movie_genre=?, movie_rate=? WHERE movie_id=?")
+	if err != nil {
+		panic(err.Error())
+	}
+	q.Exec(movie_name, movie_year, movie_genre, movie_rate, movie_id)
+}
+func db_delete(movie_id int) {
+	fmt.Println("** Delete data based on ID **")
+	db := db_connect()
+	defer db.Close()
+	q, err := db.Prepare("DELETE FROM Movie WHERE movie_id=?")
+	if err != nil {
+		panic(err.Error())
+	}
+	q.Exec(movie_id)
+}
 
 func main() {
 	fmt.Println("Rest API v1.0 - with Mux Routers")
@@ -253,7 +277,8 @@ func main() {
 	// db_insert("The Dark Knight", "2008", "Action, Crime, Drama", "9.0")
 	// db_insert("The Godfather Part II", "1974", "Crime, Drama", "9.0")
 	// db_insert("Schindler's List", "1993", "Biography, Drama, History", "9.0")
-
+	// db_update(10, "The Godfather Part II", "1974", "Crime, Drama", "9.0")
+	db_delete(11)
 	t := db_retrieve_all()
 	// t := db_retrieve_by_id(5)
 	fmt.Println(t)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -32,12 +33,18 @@ var ENV_DB string
 var DSN string
 
 // movie represents data about a movie.
+// movie_id, movie_name, movie_year, movie_genre, movie_duration, movie_origin, movie_director, movie_rate, movie_rate_count, movie_link
 type Movie struct {
-	ID    int     `json:"id"`
-	Title string  `json:"title"`
-	Year  string  `json:"year"`
-	Genre string  `json:"genre"`
-	Rate  float32 `json:"rate"`
+	ID         int     `json:"id"`
+	Name       string  `json:"name"`
+	Year       string  `json:"year"`
+	Genre      string  `json:"genre"`
+	Duration   string  `json:"duration"`
+	Origin     string  `json:"origin"`
+	Director   string  `json:"director"`
+	Rate       float32 `json:"rate"`
+	Rate_count uint64  `json:"rate_count"`
+	Link       string  `json:"link"`
 }
 
 // movies slice to seed movie data for testing API.
@@ -178,13 +185,13 @@ func db_connect() (db *sql.DB) {
 	db.SetMaxIdleConns(10)
 	return db
 }
-func db_insert(movie_name string, movie_year string, movie_genre string, movie_rate string) {
+func db_insert(m Movie) {
 	fmt.Println("** Insert **")
 	db := db_connect()
 	defer db.Close()
 	// perform insert
-	q := fmt.Sprintf("INSERT INTO Movie(movie_id, movie_name, movie_year, movie_genre, movie_rate) VALUES (?, ?, ?, ?, ?)")
-	insertResult, err := db.ExecContext(context.Background(), q, nil, movie_name, movie_year, movie_genre, movie_rate)
+	q := fmt.Sprintf("INSERT INTO Movie(movie_id, movie_name, movie_year, movie_genre, movie_duration, movie_origin, movie_director, movie_rating, movie_rating_count, movie_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+	insertResult, err := db.ExecContext(context.Background(), q, m.ID, m.Name, m.Year, m.Genre, m.Duration, m.Origin, m.Director, m.Rate, m.Rate_count, m.Link)
 	if err != nil {
 		log.Fatalf("impossible insert movie: %s", err)
 	}
@@ -209,56 +216,82 @@ func db_retrieve_all() []Movie {
 	temp := Movie{}
 	for selDB.Next() {
 		var id int
-		var name, year, genre string
+		var name, year, genre, duration, origin, director, link string
 		var rate float32
-		err = selDB.Scan(&id, &name, &year, &genre, &rate)
+		var rate_count uint64
+		err = selDB.Scan(&id, &name, &year, &genre, &duration, &origin, &director, &rate, &rate_count, &link)
 		if err != nil {
 			panic(err.Error())
 		}
 		temp.ID = id
-		temp.Title = name
+		temp.Name = name
 		temp.Year = year
 		temp.Genre = genre
+		temp.Duration = duration
+		temp.Origin = origin
+		temp.Director = director
 		temp.Rate = rate
+		temp.Rate_count = rate_count
+		temp.Link = link
 		output = append(output, temp)
 	}
 	return output
 }
-func db_retrieve_by_id(id int) Movie {
+func db_retrieve_by_id(id int) (Movie, error) {
 	fmt.Println("** Retrieve data based on ID **")
 	db := db_connect()
 	defer db.Close()
 
-	selDB, err := db.Query("SELECT * FROM Movie WHERE movie_id=?", id)
+	exist := 0
+	q, err := db.Query("SELECT EXISTS(SELECT * from Movie WHERE movie_id=?) AS temp; ", id)
+	for q.Next() {
+		err = q.Scan(&exist)
+	}
+
 	if err != nil {
 		panic(err.Error())
 	}
 	temp := Movie{}
-	for selDB.Next() {
-		var id int
-		var name, year, genre string
-		var rate float32
-		err = selDB.Scan(&id, &name, &year, &genre, &rate)
+	if exist == 1 {
+		selDB, err := db.Query("SELECT * FROM Movie WHERE movie_id=?", id)
+		// fmt.Println(err)
 		if err != nil {
 			panic(err.Error())
 		}
-		temp.ID = id
-		temp.Title = name
-		temp.Year = year
-		temp.Genre = genre
-		temp.Rate = rate
+		for selDB.Next() {
+			var id int
+			var name, year, genre, duration, origin, director, link string
+			var rate float32
+			var rate_count uint64
+			err = selDB.Scan(&id, &name, &year, &genre, &duration, &origin, &director, &rate, &rate_count, &link)
+			if err != nil {
+				panic(err.Error())
+			}
+			temp.ID = id
+			temp.Name = name
+			temp.Year = year
+			temp.Genre = genre
+			temp.Duration = duration
+			temp.Origin = origin
+			temp.Director = director
+			temp.Rate = rate
+			temp.Rate_count = rate_count
+			temp.Link = link
+		}
+		return temp, nil
+	} else {
+		return temp, errors.New("id not found.")
 	}
-	return temp
 }
-func db_update(movie_id int, movie_name string, movie_year string, movie_genre string, movie_rate string) {
+func db_update(m Movie) {
 	fmt.Println("** Update data based on ID **")
 	db := db_connect()
 	defer db.Close()
-	q, err := db.Prepare("UPDATE Movie SET movie_name=?, movie_year=?, movie_genre=?, movie_rate=? WHERE movie_id=?")
+	q, err := db.Prepare("UPDATE Movie SET movie_name=?, movie_year=?, movie_genre=?, movie_duration=?, movie_origin=?, movie_director=?, movie_rating=?, movie_rating_count=?, movie_link=? WHERE movie_id=?")
 	if err != nil {
 		panic(err.Error())
 	}
-	q.Exec(movie_name, movie_year, movie_genre, movie_rate, movie_id)
+	q.Exec(m.Name, m.Year, m.Genre, m.Duration, m.Origin, m.Director, m.Rate, m.Rate_count, m.Link, m.ID)
 }
 func db_delete(movie_id int) {
 	fmt.Println("** Delete data based on ID **")
@@ -274,13 +307,17 @@ func db_delete(movie_id int) {
 func main() {
 	fmt.Println("Rest API v1.0 - with Mux Routers")
 	load_db_env()
-	// db_insert("The Dark Knight", "2008", "Action, Crime, Drama", "9.0")
-	// db_insert("The Godfather Part II", "1974", "Crime, Drama", "9.0")
-	// db_insert("Schindler's List", "1993", "Biography, Drama, History", "9.0")
-	// db_update(10, "The Godfather Part II", "1974", "Crime, Drama", "9.0")
-	db_delete(11)
-	t := db_retrieve_all()
-	// t := db_retrieve_by_id(5)
-	fmt.Println(t)
+	// m := Movie{1, "The Shawshank Redemption", "1994", "Drama", "2h 22min", "USA", "Frank Darabont", 9.3, 2030817, "https://www.imdb.com/title/tt0111161"}
+	// db_insert(m)
+	// db_update(m)
+	// db_delete(11)
+	// t, err := db_retrieve_by_id(1)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// } else {
+	// 	fmt.Println(t)
+	// }
 	// handleRequests()
+	// t := db_retrieve_all()
+	// fmt.Println(t)
 }

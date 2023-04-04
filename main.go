@@ -32,77 +32,83 @@ var ENV_DB string
 // create Data Source Name for connecting to DB
 var DSN string
 
-// movie represents data about a movie.
-// movie_id, movie_name, movie_year, movie_genre, movie_duration, movie_origin, movie_director, movie_rate, movie_rate_count, movie_link
 type Movie struct {
-	ID         int     `json:"id"`
-	Name       string  `json:"name"`
-	Year       string  `json:"year"`
-	Genre      string  `json:"genre"`
-	Duration   string  `json:"duration"`
-	Origin     string  `json:"origin"`
-	Director   string  `json:"director"`
-	Rate       float32 `json:"rate"`
-	Rate_count uint64  `json:"rate_count"`
-	Link       string  `json:"link"`
+	ID        int     `json:"id"`
+	Name      string  `json:"name"`
+	Year      string  `json:"year"`
+	Genre     string  `json:"genre"`
+	Duration  string  `json:"duration"`
+	Origin    string  `json:"origin"`
+	Director  string  `json:"director"`
+	Rate      float32 `json:"rate"`
+	Ratecount int     `json:"rate_count"`
+	Link      string  `json:"link"`
 }
 
-// movies slice to seed movie data for testing API.
-// var movies = []Movie{
-// {ID: "0", Title: "The Shawshank Redemption", Year: "1994", Genre: "Drama", Rate: 9.3},
-// {ID: "1", Title: "The Godfather", Year: "1972", Genre: "Crime, Drama", Rate: 9.2},
-// {ID: "2", Title: "The Dark Knight", Year: "2008", Genre: "Action, Crime, Drama", Rate: 9.0},
-// {ID: "3", Title: "The Godfather Part II", Year: "1974", Genre: "Crime, Drama", Rate: 9.0},
-// {ID: "4", Title: "Schindler's List", Year: "1993", Genre: "Biography, Drama, History", Rate: 9.0},
-// }
-var movies = []Movie{}
-
-//{"ID": "5", "Title": "TestTitle", "Year": "TestYear", "Genre": "Test, Test, Test", "Rate": 10}
-
+// ----------------------------------------------
 // ---------------- REST section ----------------
+// ----------------------------------------------
 
-// get all movies in json format
 func getMovies(w http.ResponseWriter, r *http.Request) {
+	movies := db_retrieve_all()
 	json.NewEncoder(w).Encode(movies)
 }
 
 func addMovie(w http.ResponseWriter, r *http.Request) {
+	//TODO: test
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var newMovie Movie
 	json.Unmarshal(reqBody, &newMovie)
-	movies = append(movies, newMovie)
+	db_insert(newMovie)
 	json.NewEncoder(w).Encode(newMovie)
 }
 
 func getMovieByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key, _ := strconv.Atoi(vars["id"])
-	for _, movie := range movies {
-		if movie.ID == key {
-			json.NewEncoder(w).Encode(movie)
-		}
+	movie, err := db_retrieve_by_id(key)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		json.NewEncoder(w).Encode(movie)
 	}
 }
 
 func deleteMovie(w http.ResponseWriter, r *http.Request) {
+	//TODO: test
 	vars := mux.Vars(r)
-	// Extract the `id` of the movie we wish to delete
 	id, _ := strconv.Atoi(vars["id"])
-	// Loop through all our movies
-	for index, movie := range movies {
-		// if our id path parameter matches one of our
-		// movies
-		if movie.ID == id {
-			// updates our movies array to remove the
-			// movies
-			movies = append(movies[:index], movies[index+1:]...)
-		}
+	_, err := db_retrieve_by_id(id)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		db_delete(id)
 	}
 }
 
 func updateMovie(w http.ResponseWriter, r *http.Request) {
-	//TODO: create update function to perform the updating
-	// tasks
+	//TODO: fix problems
+
+	// vars := mux.Vars(r)
+	// id, _ := strconv.Atoi(vars["id"])
+	// fmt.Println(id)
+	// _, err := db_retrieve_by_id(id)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// } else {
+	// 	reqBody, _ := ioutil.ReadAll(r.Body)
+	// 	var newMovie Movie
+	// 	json.Unmarshal(reqBody, &newMovie)
+	// 	fmt.Printf("%+v\n", newMovie)
+	// 	// db_update(newMovie)
+	// 	// json.NewEncoder(w).Encode(newMovie)
+	// }
+
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	print(reqBody)
+	var newMovie Movie
+	json.Unmarshal(reqBody, &newMovie)
+	fmt.Printf("%+v\n", newMovie)
 }
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +137,7 @@ func handleRequests() {
 	// - /api/v1/post - HTTP GET request - All Posts
 	// - /api/v1/post/:id - HTTP GET request - Single post
 	// - /api/v1/post/:id - HTTP POST request - Publish a post
-	// - /api/v1/post/:id - HTTP PATCH request - update an existing post
+	// - /api/v1/post/:id - HTTP PUT request - update an existing post
 	// - /api/v1/post/:id - HTTP DELETE request - deletes a post
 
 	// creates a new instance of a mux router
@@ -159,7 +165,10 @@ func handleRequests() {
 
 }
 
+// --------------------------------------------
 // ---------------- DB section ----------------
+// --------------------------------------------
+
 func load_db_env() {
 	err := godotenv.Load("local.env")
 	if err != nil {
@@ -191,7 +200,7 @@ func db_insert(m Movie) {
 	defer db.Close()
 	// perform insert
 	q := fmt.Sprintf("INSERT INTO Movie(movie_id, movie_name, movie_year, movie_genre, movie_duration, movie_origin, movie_director, movie_rating, movie_rating_count, movie_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-	insertResult, err := db.ExecContext(context.Background(), q, m.ID, m.Name, m.Year, m.Genre, m.Duration, m.Origin, m.Director, m.Rate, m.Rate_count, m.Link)
+	insertResult, err := db.ExecContext(context.Background(), q, m.ID, m.Name, m.Year, m.Genre, m.Duration, m.Origin, m.Director, m.Rate, m.Ratecount, m.Link)
 	if err != nil {
 		log.Fatalf("impossible insert movie: %s", err)
 	}
@@ -218,7 +227,7 @@ func db_retrieve_all() []Movie {
 		var id int
 		var name, year, genre, duration, origin, director, link string
 		var rate float32
-		var rate_count uint64
+		var rate_count int
 		err = selDB.Scan(&id, &name, &year, &genre, &duration, &origin, &director, &rate, &rate_count, &link)
 		if err != nil {
 			panic(err.Error())
@@ -231,7 +240,7 @@ func db_retrieve_all() []Movie {
 		temp.Origin = origin
 		temp.Director = director
 		temp.Rate = rate
-		temp.Rate_count = rate_count
+		temp.Ratecount = rate_count
 		temp.Link = link
 		output = append(output, temp)
 	}
@@ -262,7 +271,7 @@ func db_retrieve_by_id(id int) (Movie, error) {
 			var id int
 			var name, year, genre, duration, origin, director, link string
 			var rate float32
-			var rate_count uint64
+			var rate_count int
 			err = selDB.Scan(&id, &name, &year, &genre, &duration, &origin, &director, &rate, &rate_count, &link)
 			if err != nil {
 				panic(err.Error())
@@ -275,7 +284,7 @@ func db_retrieve_by_id(id int) (Movie, error) {
 			temp.Origin = origin
 			temp.Director = director
 			temp.Rate = rate
-			temp.Rate_count = rate_count
+			temp.Ratecount = rate_count
 			temp.Link = link
 		}
 		return temp, nil
@@ -285,13 +294,14 @@ func db_retrieve_by_id(id int) (Movie, error) {
 }
 func db_update(m Movie) {
 	fmt.Println("** Update data based on ID **")
+	// fmt.Printf("%+v\n", m)
 	db := db_connect()
 	defer db.Close()
 	q, err := db.Prepare("UPDATE Movie SET movie_name=?, movie_year=?, movie_genre=?, movie_duration=?, movie_origin=?, movie_director=?, movie_rating=?, movie_rating_count=?, movie_link=? WHERE movie_id=?")
 	if err != nil {
 		panic(err.Error())
 	}
-	q.Exec(m.Name, m.Year, m.Genre, m.Duration, m.Origin, m.Director, m.Rate, m.Rate_count, m.Link, m.ID)
+	q.Exec(m.Name, m.Year, m.Genre, m.Duration, m.Origin, m.Director, m.Rate, m.Ratecount, m.Link, m.ID)
 }
 func db_delete(movie_id int) {
 	fmt.Println("** Delete data based on ID **")
@@ -307,6 +317,7 @@ func db_delete(movie_id int) {
 func main() {
 	fmt.Println("Rest API v1.0 - with Mux Routers")
 	load_db_env()
+	handleRequests()
 	// m := Movie{1, "The Shawshank Redemption", "1994", "Drama", "2h 22min", "USA", "Frank Darabont", 9.3, 2030817, "https://www.imdb.com/title/tt0111161"}
 	// db_insert(m)
 	// db_update(m)
@@ -317,7 +328,6 @@ func main() {
 	// } else {
 	// 	fmt.Println(t)
 	// }
-	// handleRequests()
 	// t := db_retrieve_all()
 	// fmt.Println(t)
 }

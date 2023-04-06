@@ -2,6 +2,8 @@ package main_test
 
 import (
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -10,6 +12,18 @@ import (
 
 var app marLib.App
 
+func TestEmptyTable(t *testing.T) {
+	clearTable()
+	req, _ := http.NewRequest("GET", "/movies", nil)
+	res := executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, res.Code)
+	if body := res.Body.String(); body != "[]" {
+		t.Errorf("Expected an empty array. Got %s", body)
+	}
+
+}
+
 func TestMain(m *testing.M) {
 	dsn := marLib.LoadDB()
 	app.Initialize("mysql", dsn)
@@ -17,6 +31,19 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	clearTable()
 	os.Exit(code)
+}
+
+func executeRequest(req *http.Request) (rr *httptest.ResponseRecorder) {
+	//executes the request and callbacks the response
+	rr = httptest.NewRecorder()
+	app.Router.ServeHTTP(rr, req)
+	return
+}
+
+func checkResponseCode(t *testing.T, expected, actual int) {
+	if expected != actual {
+		t.Errorf("Expected response code %d. Got %d\n", expected, actual)
+	}
 }
 
 func ensureTableExists() {
@@ -36,11 +63,12 @@ func createTable() {
 }
 
 func clearTable() {
+	// it will clear all data on Movie table
 	app.DB.Exec("DELETE FROM Movie")
 	app.DB.Exec("ALTER TABLE Movie AUTO_INCREMENT = 1")
 }
 
-const tableCreationQuery = `CREATE TABLE Movie (
+const tableCreationQuery = `CREATE TABLE IF NOT EXISTS Movie (
 	movie_id int NOT NULL,
 	movie_name varchar(200) NOT NULL,
 	movie_year varchar(4) NOT NULL,

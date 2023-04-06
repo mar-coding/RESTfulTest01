@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,11 +20,42 @@ func TestEmptyTable(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/movies", nil)
 	res := executeRequest(req)
 
+	//check status code with 200
 	checkResponseCode(t, http.StatusOK, res.Code)
 	if body := res.Body.String(); body != "[]" {
 		t.Errorf("Expected an empty array. Got %s", body)
 	}
 
+}
+
+func TestCreateProduct(t *testing.T) {
+	// This test tries to create a test movie
+	// and checks if the detail response is same as
+	// the data of test movie
+	clearTable()
+	rawData := `{"id":1,"name":"The Test","year":"9999","genre":"Test1 | Test2","duration":"3h 55min","origin":"USA","director":"Alice Bob","rate":10,"rate_count":1392322,"link":"https://www.test.com/title/xxx"}`
+	var jsonStr = []byte(rawData)
+	req, _ := http.NewRequest("POST", "/movie", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	res := executeRequest(req)
+	//check status code with 201
+	checkResponseCode(t, http.StatusCreated, res.Code)
+
+	var m map[string]interface{}
+	json.Unmarshal(res.Body.Bytes(), &m)
+
+	if m["name"] != "The Test" {
+		t.Errorf("Expected movie name to be 'The Test'. Got '%v'", m["name"])
+	}
+
+	if m["rate"] != 10.0 {
+		t.Errorf("Expected movie's rate to be '10'. Got '%v'", m["price"])
+	}
+
+	if m["id"] != 1.0 {
+		t.Errorf("Expected movie ID to be '1'. Got '%v'", m["id"])
+	}
 }
 
 func TestGetAbsentMovie(t *testing.T) {
@@ -35,6 +67,7 @@ func TestGetAbsentMovie(t *testing.T) {
 	req, _ := http.NewRequest("GET", url, nil)
 	res := executeRequest(req)
 
+	//check status code with 201
 	checkResponseCode(t, http.StatusOK, res.Code)
 
 	var m map[string]string

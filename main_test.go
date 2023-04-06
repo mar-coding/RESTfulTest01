@@ -28,7 +28,7 @@ func TestEmptyTable(t *testing.T) {
 
 }
 
-func TestCreateProduct(t *testing.T) {
+func TestCreateMovie(t *testing.T) {
 	// This test tries to create a test movie
 	// and checks if the detail response is same as
 	// the data of test movie

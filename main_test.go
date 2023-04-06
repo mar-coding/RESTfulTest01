@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 
 	marLib "github.com/mar-coding/RESTfulTest01"
@@ -26,6 +28,18 @@ func TestEmptyTable(t *testing.T) {
 		t.Errorf("Expected an empty array. Got %s", body)
 	}
 
+}
+
+func TestGetMovie(t *testing.T) {
+	// This test first creates a new movie
+	// then fetch it and checks the status code
+	clearTable()
+	addMovies(1)
+
+	req, _ := http.NewRequest("GET", "/movie/1", nil)
+	response := executeRequest(req)
+	//check status code with 200
+	checkResponseCode(t, http.StatusOK, response.Code)
 }
 
 func TestCreateMovie(t *testing.T) {
@@ -85,6 +99,19 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	clearTable()
 	os.Exit(code)
+}
+
+func addMovies(num int) {
+	// This function creates fake movie
+	// the amount of movies that create is related on 'num' arg
+	if num < 1 {
+		num = 1
+	}
+	q := ""
+	for i := 0; i < num; i++ {
+		q = fmt.Sprintf("INSERT INTO Movie(movie_id, movie_name, movie_year, movie_genre, movie_duration, movie_origin,movie_director, movie_rating, movie_rating_count, movie_link) VALUES(1,%s,9999,Test1 | Test2,3h 55min,USA,Alice Bob,%d,1392322,www.test.com/title/xxx)", "Test Movie "+strconv.Itoa(i), rand.Intn(10-0)+0)
+		app.DB.Exec(q)
+	}
 }
 
 func executeRequest(req *http.Request) (rr *httptest.ResponseRecorder) {

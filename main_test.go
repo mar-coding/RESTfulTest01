@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -20,6 +22,25 @@ func TestEmptyTable(t *testing.T) {
 	checkResponseCode(t, http.StatusOK, res.Code)
 	if body := res.Body.String(); body != "[]" {
 		t.Errorf("Expected an empty array. Got %s", body)
+	}
+
+}
+
+func TestGetAbsentMovie(t *testing.T) {
+	// This test tries to access a non-existent movie
+	// check status code to be 404 & response body be
+	// Movie not found.
+	clearTable()
+	url := fmt.Sprintf("/movie/%s", "10")
+	req, _ := http.NewRequest("GET", url, nil)
+	res := executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, res.Code)
+
+	var m map[string]string
+	json.Unmarshal(res.Body.Bytes(), &m)
+	if m["error"] != "Movie not found" {
+		t.Errorf("Expected the 'error' key of the response to be set to 'Movie not found'. Got '%s'", m["error"])
 	}
 
 }

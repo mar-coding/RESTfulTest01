@@ -67,7 +67,7 @@ func getMovies(db *sql.DB, start, count int) ([]Movie, error) {
 		if err := rows.Scan(&m.Id, &m.Name, &m.Year, &m.Genre, &m.Duration, &m.Origin, &m.Director, &m.Rate, &m.Ratecount, &m.Link); err != nil {
 			return nil, err
 		}
-		movies = append(movies, p)
+		movies = append(movies, m)
 	}
 
 	return movies, nil

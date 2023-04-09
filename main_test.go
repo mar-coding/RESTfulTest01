@@ -17,8 +17,35 @@ import (
 
 var app marLib.App
 
+func TestDeleteMovie(t *testing.T) {
+	// This test, first creates a new random movie
+	// then delete the movie and then
+	// check if it deletes successfully or not
+
+	clearTable()
+	addMovies(1)
+
+	req, _ := http.NewRequest("GET", "/movie/1", nil)
+	res := executeRequest(req)
+
+	//check status code with 200
+	checkResponseCode(t, http.StatusOK, res.Code)
+
+	req, _ = http.NewRequest("DELETE", "/movie/1", nil)
+	res = executeRequest(req)
+
+	//check status code with 200
+	checkResponseCode(t, http.StatusOK, res.Code)
+
+	req, _ = http.NewRequest("GET", "/movie/1", nil)
+	res = executeRequest(req)
+
+	//check status code with 404
+	checkResponseCode(t, http.StatusNotFound, res.Code)
+}
+
 func TestUpdateMovie(t *testing.T) {
-	// This test, first creates new random movie
+	// This test, first creates a new random movie
 	// then changes the detail of the movie and at last
 	// check if it changes successfully or not
 

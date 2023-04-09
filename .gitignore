@@ -21,6 +21,7 @@ module/web-service-gin/main
 *.crt
 *.key
 *.env
+*.bin
 
 #Python#
 # Byte-compiled / optimized / DLL files

@@ -53,13 +53,39 @@ func LoadDB() (dsn string) {
 	return
 }
 
-// routes handling
+// ---------------------------------------------
+// ----------- Routes & API handling -----------
+// ---------------------------------------------
 
-func (a *App) getMovie(w http.ResponseWriter, r *http.Request) {
+func (a *App) apiGetMovies(w http.ResponseWriter, r *http.Request) {
+	count, _ := strconv.Atoi(r.FormValue("count"))
+	start, _ := strconv.Atoi(r.FormValue("start"))
+
+	// fixing problem with thresholds
+	MAX_COUNT := 10
+	MIN_COUNT := 1
+	DEFAULT_START := 0
+	if count > MAX_COUNT || count < MIN_COUNT {
+		count = MAX_COUNT
+	}
+	if start < DEFAULT_START {
+		start = DEFAULT_START
+	}
+
+	movies, err := getMovies(a.DB, start, count)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, movies)
+}
+
+func (a *App) apiGetMovie(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		respondWithError(w, http.StatusBadRequest, "Invalid movie ID")
 		return
 	}
 
@@ -94,7 +120,8 @@ func (a *App) handleRequests() {
 
 	//API version variable
 	api_ver := "/api/v1"
-	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", api_ver), a.getMovie).Methods("GET")
+	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", api_ver), a.apiGetMovie).Methods("GET")
+	a.Router.HandleFunc(fmt.Sprintf("%s/movies", api_ver), a.apiGetMovies).Methods("GET")
 	// - /api/v1/post - HTTP GET request - All Posts
 	// - /api/v1/post/:id - HTTP GET request - Single post
 	// - /api/v1/post/:id - HTTP POST request - Publish a post

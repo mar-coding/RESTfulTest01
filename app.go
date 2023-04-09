@@ -57,6 +57,31 @@ func LoadDB() (dsn string) {
 // ----------- Routes & API handling -----------
 // ---------------------------------------------
 
+func (a *App) apiUpdateMovie(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid movie ID")
+		return
+	}
+
+	var m Movie
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer r.Body.Close()
+	m.Id = int64(id)
+
+	if err := m.updateMovie(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, m)
+}
+
 func (a *App) apiCreateMovie(w http.ResponseWriter, r *http.Request) {
 	var m Movie
 	decoder := json.NewDecoder(r.Body)
@@ -136,10 +161,11 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 func (a *App) handleRequests() {
 
 	//API version variable
-	api_ver := "/api/v1"
-	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", api_ver), a.apiGetMovie).Methods("GET")
-	a.Router.HandleFunc(fmt.Sprintf("%s/movies", api_ver), a.apiGetMovies).Methods("GET")
-	a.Router.HandleFunc(fmt.Sprintf("%s/movie", api_ver), a.apiCreateMovie).Methods("POST")
+	API_VER := "/api/v1"
+	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", API_VER), a.apiGetMovie).Methods("GET")
+	a.Router.HandleFunc(fmt.Sprintf("%s/movies", API_VER), a.apiGetMovies).Methods("GET")
+	a.Router.HandleFunc(fmt.Sprintf("%s/movie", API_VER), a.apiCreateMovie).Methods("POST")
+	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", API_VER), a.apiUpdateMovie).Methods("PUT")
 	// - /api/v1/post - HTTP GET request - All Posts
 	// - /api/v1/post/:id - HTTP GET request - Single post
 	// - /api/v1/post/:id - HTTP POST request - Publish a post

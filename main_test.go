@@ -2,10 +2,10 @@ package main_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +16,7 @@ import (
 )
 
 var app marLib.App
+var API_VER = "/api/v1"
 
 func TestDeleteMovie(t *testing.T) {
 	// This test, first creates a new random movie
@@ -25,19 +26,19 @@ func TestDeleteMovie(t *testing.T) {
 	clearTable()
 	addMovies(1)
 
-	req, _ := http.NewRequest("GET", "/movie/1", nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/movie/1", API_VER), nil)
 	res := executeRequest(req)
 
 	//check status code with 200
 	checkResponseCode(t, http.StatusOK, res.Code)
 
-	req, _ = http.NewRequest("DELETE", "/movie/1", nil)
+	req, _ = http.NewRequest("DELETE", fmt.Sprintf("%s/movie/1", API_VER), nil)
 	res = executeRequest(req)
 
 	//check status code with 200
 	checkResponseCode(t, http.StatusOK, res.Code)
 
-	req, _ = http.NewRequest("GET", "/movie/1", nil)
+	req, _ = http.NewRequest("GET", fmt.Sprintf("%s/movie/1", API_VER), nil)
 	res = executeRequest(req)
 
 	//check status code with 404
@@ -52,14 +53,14 @@ func TestUpdateMovie(t *testing.T) {
 	clearTable()
 	addMovies(1)
 
-	req, _ := http.NewRequest("GET", "/movie/1", nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/movie/1", API_VER), nil)
 	res := executeRequest(req)
 	var originalMovie map[string]interface{}
 	json.Unmarshal(res.Body.Bytes(), &originalMovie)
 
 	rawData := `{"id":1,"name":"The Updated Version","year":"9999","genre":"Test1 | Test2","duration":"3h 55min","origin":"USA","director":"Alice Bob","rate":1,"rate_count":1392322,"link":"https://www.test.com/title/xxx"}`
 	var jsonStr = []byte(rawData)
-	req, _ = http.NewRequest("PUT", "/movie/1", bytes.NewBuffer(jsonStr))
+	req, _ = http.NewRequest("PUT", fmt.Sprintf("%s/movie/1", API_VER), bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	res = executeRequest(req)
@@ -78,14 +79,14 @@ func TestUpdateMovie(t *testing.T) {
 		t.Errorf("Expected the name to change from '%v' to '%v'. Got '%v'", originalMovie["name"], m["name"], m["name"])
 	}
 
-	if m["price"] == originalMovie["price"] {
-		t.Errorf("Expected the price to change from '%v' to '%v'. Got '%v'", originalMovie["price"], m["price"], m["price"])
+	if m["rate"] == originalMovie["rate"] {
+		t.Errorf("Expected the price to change from '%v' to '%v'. Got '%v'", originalMovie["rate"], m["rate"], m["rate"])
 	}
 
 }
 func TestEmptyTable(t *testing.T) {
 	clearTable()
-	req, _ := http.NewRequest("GET", "/movies", nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/movies", API_VER), nil)
 	res := executeRequest(req)
 
 	//check status code with 200
@@ -102,7 +103,7 @@ func TestGetMovie(t *testing.T) {
 	clearTable()
 	addMovies(1)
 
-	req, _ := http.NewRequest("GET", "/movie/1", nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/movie/1", API_VER), nil)
 	response := executeRequest(req)
 	//check status code with 200
 	checkResponseCode(t, http.StatusOK, response.Code)
@@ -115,7 +116,7 @@ func TestCreateMovie(t *testing.T) {
 	clearTable()
 	rawData := `{"id":1,"name":"The Test","year":"9999","genre":"Test1 | Test2","duration":"3h 55min","origin":"USA","director":"Alice Bob","rate":10,"rate_count":1392322,"link":"https://www.test.com/title/xxx"}`
 	var jsonStr = []byte(rawData)
-	req, _ := http.NewRequest("POST", "/movie", bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/movie", API_VER), bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	res := executeRequest(req)
@@ -143,12 +144,12 @@ func TestGetAbsentMovie(t *testing.T) {
 	// check status code to be 404 & response body be
 	// Movie not found.
 	clearTable()
-	url := fmt.Sprintf("/movie/%s", "10")
+	url := fmt.Sprintf("%s/movie/%s", API_VER, "10")
 	req, _ := http.NewRequest("GET", url, nil)
 	res := executeRequest(req)
 
-	//check status code with 201
-	checkResponseCode(t, http.StatusOK, res.Code)
+	//check status code with 404
+	checkResponseCode(t, http.StatusNotFound, res.Code)
 
 	var m map[string]string
 	json.Unmarshal(res.Body.Bytes(), &m)
@@ -175,8 +176,11 @@ func addMovies(num int) {
 	}
 	q := ""
 	for i := 0; i < num; i++ {
-		q = fmt.Sprintf("INSERT INTO Movie(movie_id, movie_name, movie_year, movie_genre, movie_duration, movie_origin,movie_director, movie_rating, movie_rating_count, movie_link) VALUES(1,%s,9999,Test1 | Test2,3h 55min,USA,Alice Bob,%d,1392322,www.test.com/title/xxx)", "Test Movie "+strconv.Itoa(i), rand.Intn(10-0)+0)
-		app.DB.Exec(q)
+		q = fmt.Sprintf("INSERT INTO Movie(movie_name) VALUES (?)")
+		_, err := app.DB.ExecContext(context.Background(), q, "Movie Test "+strconv.Itoa(i))
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -217,15 +221,15 @@ func clearTable() {
 
 const tableCreationQuery = `CREATE TABLE IF NOT EXISTS Movie (
 	movie_id int NOT NULL,
-	movie_name varchar(200) NOT NULL,
-	movie_year varchar(4) NOT NULL,
-	movie_genre varchar(200) NOT NULL,
-	movie_duration varchar(50) NOT NULL,
-	movie_origin varchar(200) NOT NULL,
-	movie_director varchar(200) NOT NULL,
-	movie_rating float NOT NULL,
-	movie_rating_count bigint NOT NULL,
-	movie_link varchar(200) NOT NULL
+  	movie_name varchar(200) NOT NULL,
+  	movie_year varchar(4) NOT NULL DEFAULT '9999',
+  	movie_genre varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'genre',
+  	movie_duration varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'xx h yy m',
+	movie_origin varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'earth',
+	movie_director varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'human',
+	movie_rating float NOT NULL DEFAULT '10',
+	movie_rating_count bigint NOT NULL DEFAULT '0',
+	movie_link varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'url'
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;`
 
 const createPRKeyQuery = `ALTER TABLE Movie

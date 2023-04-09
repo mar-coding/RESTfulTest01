@@ -24,9 +24,12 @@ type App struct {
 func (a *App) Initialize(db_name string, dsn string) {
 	a.DB = dbConnect(db_name, dsn)
 	a.Router = mux.NewRouter()
+	a.handleRequests()
 }
 
-func (a *App) Run(addr string) {}
+func (a *App) Run(addr string) {
+	log.Fatal(http.ListenAndServe(":12345", a.Router))
+}
 
 func dbConnect(db_name string, dsn string) (db *sql.DB) {
 	db, err := sql.Open(db_name, dsn)

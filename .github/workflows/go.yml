@@ -7,6 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+    - name: create .env
+      run: |
+        echo "${{secrets.DB_PASSWORD }}" > .env
+        echo "${{secrets.DB_USER }}" > .env
+        echo "${{secrets.DB_NAME }}" > .env
+        echo "${{secrets.DB_IP }}" > .env
+        echo "${{secrets.DB_PORT }}" > .env
     - name: Download Go
       uses: actions/setup-go@v3
       with:

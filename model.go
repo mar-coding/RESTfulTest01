@@ -51,17 +51,14 @@ func (m *Movie) createMovie(db *sql.DB) error {
 }
 
 func getMovies(db *sql.DB, start, count int) ([]Movie, error) {
-	q := "SELECT * FROM Movie ORDER BY movie_id ASC LIMIT $1 OFFSET $2"
-	rows, err := db.Query(q, count, start)
-
+	q := fmt.Sprintf("SELECT * FROM Movie ORDER BY movie_id ASC LIMIT %d OFFSET %d", count, start)
+	rows, err := db.Query(q)
 	if err != nil {
 		return nil, err
 	}
 
 	defer rows.Close()
-
 	movies := []Movie{}
-
 	for rows.Next() {
 		var m Movie
 		if err := rows.Scan(&m.Id, &m.Name, &m.Year, &m.Genre, &m.Duration, &m.Origin, &m.Director, &m.Rate, &m.Ratecount, &m.Link); err != nil {

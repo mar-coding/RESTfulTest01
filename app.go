@@ -57,6 +57,23 @@ func LoadDB() (dsn string) {
 // ----------- Routes & API handling -----------
 // ---------------------------------------------
 
+func (a *App) apiCreateMovie(w http.ResponseWriter, r *http.Request) {
+	var m Movie
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer r.Body.Close()
+
+	if err := m.createMovie(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, m)
+}
+
 func (a *App) apiGetMovies(w http.ResponseWriter, r *http.Request) {
 	count, _ := strconv.Atoi(r.FormValue("count"))
 	start, _ := strconv.Atoi(r.FormValue("start"))
@@ -122,6 +139,7 @@ func (a *App) handleRequests() {
 	api_ver := "/api/v1"
 	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", api_ver), a.apiGetMovie).Methods("GET")
 	a.Router.HandleFunc(fmt.Sprintf("%s/movies", api_ver), a.apiGetMovies).Methods("GET")
+	a.Router.HandleFunc(fmt.Sprintf("%s/movie", api_ver), a.apiCreateMovie).Methods("POST")
 	// - /api/v1/post - HTTP GET request - All Posts
 	// - /api/v1/post/:id - HTTP GET request - Single post
 	// - /api/v1/post/:id - HTTP POST request - Publish a post

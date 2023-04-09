@@ -2,9 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -48,4 +51,77 @@ func LoadDB() (dsn string) {
 
 	dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbIp, dbPort, dbName)
 	return
+}
+
+// routes handling
+
+func (a *App) getMovie(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		return
+	}
+
+	m := Movie{Id: int64(id)}
+	if err := m.getMovie(a.DB); err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			respondWithError(w, http.StatusNotFound, "Movie not found")
+		default:
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, m)
+}
+
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	// process error responses
+	respondWithJSON(w, code, map[string]string{"error": message})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	// process normal responses
+	response, _ := json.Marshal(payload)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(response)
+}
+
+func (a *App) handleRequests() {
+
+	//API version variable
+	api_ver := "/api/v1"
+	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", api_ver), a.getMovie).Methods("GET")
+	// - /api/v1/post - HTTP GET request - All Posts
+	// - /api/v1/post/:id - HTTP GET request - Single post
+	// - /api/v1/post/:id - HTTP POST request - Publish a post
+	// - /api/v1/post/:id - HTTP PUT request - update an existing post
+	// - /api/v1/post/:id - HTTP DELETE request - deletes a post
+
+	// creates a new instance of a mux router
+
+	// myRouter.HandleFunc("/amin", aminPage)
+	// myRouter.HandleFunc("/inc", incrementCounterPage)
+	// myRouter.HandleFunc(fmt.Sprintf("%s/movie", api_ver), addMovie).Methods("POST")
+	// myRouter.HandleFunc(fmt.Sprintf("%s/movie", api_ver), getMovies)
+	// // it only calls the addMovie when http method is a POST
+	// // NOTE: Ordering is important here! This has to be defined before
+	// // the other `/movie` endpoint.
+
+	// myRouter.HandleFunc(fmt.Sprintf("%s/movie/{id}", api_ver), deleteMovie).Methods("DELETE")
+	// myRouter.HandleFunc(fmt.Sprintf("%s/movie/{id}", api_ver), updateMovie).Methods("PUT")
+	// myRouter.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", api_ver), a.getMovie)
+	// http.Handle("/", http.FileServer(http.Dir("./static")))
+	// myRouter.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
+
+	// http.HandleFunc("/", indexPage)
+
+	// log.Fatal(http.ListenAndServe(":12345", myRouter))
+
+	// for https running
+	// log.Fatal(http.ListenAndServeTLS(":443", "server.crt", "server.key", nil))
+
 }

@@ -17,6 +17,45 @@ import (
 
 var app marLib.App
 
+func TestUpdateMovie(t *testing.T) {
+	// This test, first creates new random movie
+	// then changes the detail of the movie and at last
+	// check if it changes successfully or not
+
+	clearTable()
+	addMovies(1)
+
+	req, _ := http.NewRequest("GET", "/movie/1", nil)
+	res := executeRequest(req)
+	var originalMovie map[string]interface{}
+	json.Unmarshal(res.Body.Bytes(), &originalMovie)
+
+	rawData := `{"id":1,"name":"The Updated Version","year":"9999","genre":"Test1 | Test2","duration":"3h 55min","origin":"USA","director":"Alice Bob","rate":1,"rate_count":1392322,"link":"https://www.test.com/title/xxx"}`
+	var jsonStr = []byte(rawData)
+	req, _ = http.NewRequest("PUT", "/movie/1", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	res = executeRequest(req)
+
+	//check status code with 200
+	checkResponseCode(t, http.StatusOK, res.Code)
+
+	var m map[string]interface{}
+	json.Unmarshal(res.Body.Bytes(), &m)
+
+	if m["id"] != originalMovie["id"] {
+		t.Errorf("Expected the id to remain the same (%v). Got %v", originalMovie["id"], m["id"])
+	}
+
+	if m["name"] == originalMovie["name"] {
+		t.Errorf("Expected the name to change from '%v' to '%v'. Got '%v'", originalMovie["name"], m["name"], m["name"])
+	}
+
+	if m["price"] == originalMovie["price"] {
+		t.Errorf("Expected the price to change from '%v' to '%v'. Got '%v'", originalMovie["price"], m["price"], m["price"])
+	}
+
+}
 func TestEmptyTable(t *testing.T) {
 	clearTable()
 	req, _ := http.NewRequest("GET", "/movies", nil)

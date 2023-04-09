@@ -57,11 +57,28 @@ func LoadDB() (dsn string) {
 // ----------- Routes & API handling -----------
 // ---------------------------------------------
 
+func (a *App) apiDeleteMovie(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid Movie ID")
+		return
+	}
+
+	p := Movie{Id: int64(id)}
+	if err := p.deleteMovie(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
 func (a *App) apiUpdateMovie(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid movie ID")
+		respondWithError(w, http.StatusBadRequest, "Invalid Movie ID")
 		return
 	}
 
@@ -127,7 +144,7 @@ func (a *App) apiGetMovie(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid movie ID")
+		respondWithError(w, http.StatusBadRequest, "Invalid Movie ID")
 		return
 	}
 
@@ -162,37 +179,13 @@ func (a *App) handleRequests() {
 
 	//API version variable
 	API_VER := "/api/v1"
+
+	// The "{id:[0-9]+}" part of the path indicates that Gorilla Mux should treat process a URL only if the id is a number.
+	// For all matching requests, Gorilla Mux then stores the actual numeric value in the "id" variable
+
 	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", API_VER), a.apiGetMovie).Methods("GET")
 	a.Router.HandleFunc(fmt.Sprintf("%s/movies", API_VER), a.apiGetMovies).Methods("GET")
 	a.Router.HandleFunc(fmt.Sprintf("%s/movie", API_VER), a.apiCreateMovie).Methods("POST")
 	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", API_VER), a.apiUpdateMovie).Methods("PUT")
-	// - /api/v1/post - HTTP GET request - All Posts
-	// - /api/v1/post/:id - HTTP GET request - Single post
-	// - /api/v1/post/:id - HTTP POST request - Publish a post
-	// - /api/v1/post/:id - HTTP PUT request - update an existing post
-	// - /api/v1/post/:id - HTTP DELETE request - deletes a post
-
-	// creates a new instance of a mux router
-
-	// myRouter.HandleFunc("/amin", aminPage)
-	// myRouter.HandleFunc("/inc", incrementCounterPage)
-	// myRouter.HandleFunc(fmt.Sprintf("%s/movie", api_ver), addMovie).Methods("POST")
-	// myRouter.HandleFunc(fmt.Sprintf("%s/movie", api_ver), getMovies)
-	// // it only calls the addMovie when http method is a POST
-	// // NOTE: Ordering is important here! This has to be defined before
-	// // the other `/movie` endpoint.
-
-	// myRouter.HandleFunc(fmt.Sprintf("%s/movie/{id}", api_ver), deleteMovie).Methods("DELETE")
-	// myRouter.HandleFunc(fmt.Sprintf("%s/movie/{id}", api_ver), updateMovie).Methods("PUT")
-	// myRouter.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", api_ver), a.getMovie)
-	// http.Handle("/", http.FileServer(http.Dir("./static")))
-	// myRouter.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
-
-	// http.HandleFunc("/", indexPage)
-
-	// log.Fatal(http.ListenAndServe(":12345", myRouter))
-
-	// for https running
-	// log.Fatal(http.ListenAndServeTLS(":443", "server.crt", "server.key", nil))
-
+	a.Router.HandleFunc(fmt.Sprintf("%s/movie/{id:[0-9]+}", API_VER), a.apiDeleteMovie).Methods("DELETE")
 }

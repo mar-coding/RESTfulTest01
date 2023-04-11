@@ -16,6 +16,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var PORT = "9990"
+
 type App struct {
 	Router *mux.Router
 	DB     *sql.DB
@@ -28,7 +30,7 @@ func (a *App) Initialize(db_name string, dsn string) {
 }
 
 func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(":12345", a.Router))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", PORT), a.Router))
 }
 
 func dbConnect(db_name string, dsn string) (db *sql.DB) {

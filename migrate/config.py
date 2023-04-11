@@ -2,50 +2,39 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 import csv
+from mysql.connector import Error
 
-def test_connection():
-    load_dotenv()
-    connection = None
+# TODO: this code has problem that when we have
+# exception between lines 10 to 35 it raises below exception
+# 'UnboundLocalError: local variable 'connection' referenced before assignment'
+# I dont find any solution yet.
+def createSchema():
     try:
-        connection = mysql.connector.connect(host='127.0.0.1',
-                                             port='3306',
-                                         database='myDB',
-                                         user='root',
-                                         password='132egfM*m134A13tgqk@', use_pure=True, connection_timeout=180)
+        sqlCmds = None
+        with open("schema.sql", 'r') as file:
+            sqlFile = file.read()
+            sqlCmds = sqlFile.split(';')
 
+        connection = mysql.connector.connect(host=os.getenv('DB_IP'),
+                                             port=os.getenv('DB_PORT'),
+                                         database=os.getenv('DB_NAME'),
+                                         user=os.getenv('DB_USER'),
+                                         password=os.getenv('DB_PASSWORD'))
         if connection.is_connected():
-            db_Info = connection.get_server_info()
-            print("Connected to MySQL database... MySQL Server version on ", db_Info)
+            cursor = connection.cursor()
+            for cmd in sqlCmds:
+                cursor.execute(cmd)
+
     except Error as e:
         print("Error while connecting to MySQL", e)
     finally:
         if connection.is_connected():
+            cursor.close()
             connection.close()
-            print("MySQL connection is closed")
 
-def add_schema():
-    sqlCmds = None
-    with open("schema.sql", 'r') as file:
-        sqlFile = file.read()
-        sqlCmds = sqlFile.split(';')
 
-    try:
-        connection = mysql.connector.connect(host='127.0.0.1',
-                                             port='3306',
-                                         database='myDB',
-                                         user='root',
-                                         password='132egfM*m134A13tgqk@', use_pure=True, connection_timeout=180)
-
-        if connection.is_connected():
-            for cmd in sqlCmds:
-                connection._execute_query(cmd)
-    except Exception as e:
-        print("Error while running SQL", e)
-    finally:
-        if connection.is_connected():
-            connection.close()
 def main():
-    add_schema()
+    createSchema()
     
 if __name__ == "__main__":
     main()

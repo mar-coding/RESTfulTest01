@@ -1,12 +1,20 @@
-FROM golang:alpine
+FROM golang:1.18.1-alpine AS builder
 
 LABEL maintainer = "marcoding78@gmail.com"
 
-# Set pwd to the go folder
-WORKDIR /movieCatcherApp
+RUN apk --no-cache add ca-certificates git
+WORKDIR /build
 
-ADD . .
-
+# Fetch dependencies
+COPY movieCatcherApp/go.mod movieCatcherApp/go.sum ./
 RUN go mod download
 
-ENTRYPOINT go build && ./RESTfulTest01
+# Build
+COPY . ./
+RUN CGO_ENABLED=0 go build
+
+# Create final image
+FROM alpine
+WORKDIR /
+COPY --from=builder /build/myapp .
+EXPOSE 8080
